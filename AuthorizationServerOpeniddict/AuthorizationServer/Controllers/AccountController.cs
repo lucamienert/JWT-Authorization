@@ -1,0 +1,50 @@
+﻿using AuthorizationServer.ViewModels;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+
+namespace AuthorizationServer.Controllers;
+
+public class AccountController : Controller
+{
+    [HttpGet]
+    [AllowAnonymous]
+    public IActionResult Login(string? returnUrl = null)
+    {
+        ViewData["ReturnUrl"] = returnUrl;
+        return View();
+    }
+
+    [HttpPost]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Login(LoginViewModel model)
+    {
+        ViewData["ReturnUrl"] = model.ReturnURL;
+
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, model.UserName)
+        };
+
+        var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+
+        await HttpContext.SignInAsync(new ClaimsPrincipal(claimsIdentity));
+
+        if (Url.IsLocalUrl(model.ReturnURL))
+            return Redirect(model.ReturnURL);
+
+        return RedirectToAction(nameof(HomeController.Index), "Home");
+    }
+
+    public async Task<IActionResult> Logout()
+    {
+        await HttpContext.SignOutAsync();
+        return RedirectToAction(nameof(HomeController.Index), "Home");
+    }
+}
